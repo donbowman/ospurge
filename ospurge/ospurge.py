@@ -34,7 +34,7 @@ from ceilometerclient.v2 import client as ceilometer_client
 import ceilometerclient.exc
 import cinderclient.exceptions
 from cinderclient.v1 import client as cinder_client
-from glanceclient.v1 import client as glance_client
+from glanceclient.v2 import client as glance_client
 import glanceclient.exc
 from keystoneclient.apiclient import exceptions as api_exceptions
 from keystoneclient.v2_0 import client as keystone_client
@@ -47,6 +47,12 @@ from swiftclient import client as swift_client
 
 RETRIES = 10  # Retry a delete operation 10 times before exiting
 TIMEOUT = 5   # 5 seconds timeout between retries
+
+# Squelch logging from the libraries we use
+logging.getLogger("requests").setLevel(logging.WARNING)
+logging.getLogger("connectionpool").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+
 
 
 class ResourceNotEnabled(Exception):
@@ -462,6 +468,7 @@ class GlanceImages(Resources):
         return filter(self._owned_resource, self.client.images.list())
 
     def delete(self, image):
+        self.client.images.update(image.id, protected=False)
         super(GlanceImages, self).delete(image)
         self.client.images.delete(image.id)
 

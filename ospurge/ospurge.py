@@ -96,7 +96,8 @@ RESOURCES_CLASSES = ['CinderSnapshots',
                      'SwiftObjects',
                      'SwiftContainers',
                      'CinderVolumes',
-                     'CeilometerAlarms']
+                     #'CeilometerAlarms',
+                     ]
 
 
 # Decorators
@@ -344,6 +345,11 @@ class NeutronInterfaces(NeutronResources):
         return filter(self._owned_resource, all_ports)
 
     def delete(self, interface):
+        # We might need this interface to get to some ExtraRoute, which
+        # would mean a failure to delete it. Purge the routes first
+        # on the device router if so.
+        if interface['device_owner'] == 'network:router_interface':
+            self.client.update_router(interface['device_id'], { 'router' : { 'routes' : []}})
         super(NeutronInterfaces, self).delete(interface)
         self.client.remove_interface_router(interface['device_id'],
                                             {'port_id': interface['id']})
@@ -465,7 +471,10 @@ class GlanceImages(Resources):
         self.project_id = session.project_id
 
     def list(self):
-        return filter(self._owned_resource, self.client.images.list())
+        try:
+            return filter(self._owned_resource, self.client.images.list())
+        except:
+            return ''
 
     def delete(self, image):
         self.client.images.update(image.id, protected=False)
